@@ -12,6 +12,48 @@ import numpy as np
 import sys
 import depthai
 
+
+import http.server
+import socketserver
+import threading
+from urllib.parse import urlparse, parse_qs
+
+# GPS Coords
+gps_lat = 0
+gps_long = 0
+
+# GPS Server
+class ServerHandler(http.server.BaseHTTPRequestHandler):
+
+    def do_GET(self):
+        print('GET REQUETS received')
+        global gps_lat
+        global gps_long
+        
+        url = urlparse(self.path)
+        if url.path == "/gps" :
+            print('gps param: ', url.query["gps"])
+
+        #return http.server.BaseHTTPRequestHandler.do_GET(self)
+
+    def do_POST(self):
+        content_len = int(self.headers['Content-Length'])
+        post_body = self.rfile.read(content_len)
+        print('post_body: ', post_body)
+        #return http.server.BaseHTTPRequestHandler.do_POST(self)
+
+        self.send_response(200)
+        self.send_header("Set-Cookie", "foo=bar")
+        self.end_headers()
+        #self.wfile.write('')
+        
+def startGpsServer():
+    port = 5000
+    with socketserver.TCPServer(("", port), ServerHandler) as httpd:
+        print("serving at port", port)
+        httpd.serve_forever()
+
+
 print('Using depthai module from: ', depthai.__file__)
 print('Depthai version installed: ', depthai.__version__)
 
@@ -79,16 +121,22 @@ class DepthAI:
         enable_object_tracker = 'object_tracker' in stream_names
 
         # grab video file, if option exists
-        video_file = configMan.video_file
+        #video_file = configMan.video_file
 
         # timestamp
         timestr = strftime("%Y%m%d-%H%M%S")
+
+        # open video file
+        video_file = open('captures/video-' + timestr, 'wb')
 
         # Open depth file
         depth_file = open('captures/depth-' + timestr, 'wb')
 
         # Open color file
         color_file = open('captures/color-' + timestr, 'wb')
+
+        # Open color vid
+        # color_video_writer = cv2.VideoWriter('captures/color-' + timestr + '.pngstream', cv2.VideoWriter_fourcc('M','J','P','G'), 5, (1920, 1080))
 
 
         self.device = None
@@ -317,7 +365,7 @@ class DepthAI:
                             camera = 'right'
                         if nnet_prev["entries_prev"][camera] is not None:
                             frame = show_nn(nnet_prev["entries_prev"][camera], frame, NN_json=NN_json, config=config, nn2depth=nn2depth)
-                    #cv2.imshow(window_name, frame)
+                    cv2.imshow(window_name, frame)
 
                 elif packet.stream_name == 'jpegout':
                     jpg = packetData
@@ -327,9 +375,10 @@ class DepthAI:
                 elif packet.stream_name == 'video':
                     videoFrame = packetData
                     videoFrame.tofile(video_file)
-                    #mjpeg = packetData
-                    #mat = cv2.imdecode(mjpeg, cv2.IMREAD_COLOR)
-                    #cv2.imshow('mjpeg', mat)
+                    mjpeg = packetData
+                    mat = cv2.imdecode(mjpeg, cv2.IMREAD_COLOR)
+                    cv2.imshow('mjpeg', mat)
+
                 elif packet.stream_name == 'color':
                     meta = packet.getMetadata()
                     w = meta.getFrameWidth()
@@ -341,7 +390,8 @@ class DepthAI:
                     cv2.putText(bgr, packet.stream_name, (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
                     cv2.putText(bgr, "fps: " + str(frame_count_prev[window_name]), (25, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
 
-                    bgr.tofile(color_file)
+                    #bgr.tofile(color_file)
+                    #color_video_writer.write(bgr)
 
                     #cv2.imshow("color", bgr)
 
@@ -396,8 +446,18 @@ class DepthAI:
         if color_file is not None:
             color_file.close()
 
+        if color_video_writer is not None:
+            color_video_writer.release()
+
         print('py: DONE.')
 
 if __name__ == "__main__":
+    # Start server for GPS location retrieval (in background)    
+    gpsThread = threading.Thread(target=startGpsServer)
+    gpsThread.daemon = True
+    gpsThread.start()
+
     dai = DepthAI()
     dai.startLoop()
+
+
