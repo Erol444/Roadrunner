@@ -66,7 +66,22 @@ def runVideo(fps, depth_path, video_path):
             # Visualize depth
             pcl_converter.rgbd_to_projection(depth_frame, depth_grayscale)
             pcl_converter.visualize_pcd()
-            
+
+            pointCloud = pcl_converter.pcd
+            if pointCloud != None:
+                #print(pointCloud)
+                plane_model,inliers = pointCloud.segment_plane(10.0,10,10)
+            #pointCLD = open3d.visualization.draw_geometries([pointCLD])
+                [a, b, c, d] = plane_model
+                #print(f"Plane model: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
+
+
+                inlier_cloud = pointCloud.select_by_index(inliers)
+                inlier_cloud.paint_uniform_color([1.0, 0, 0])
+
+                outlier_cloud = pointCloud.select_by_index(inliers, invert=True)
+
+                pcl_converter.vis.draw_geometries([inlier_cloud, outlier_cloud])
 
 
             cv2.waitKey( int((1.0 / fps) * 1000) )
