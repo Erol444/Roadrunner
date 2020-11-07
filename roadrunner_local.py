@@ -33,7 +33,9 @@ pcl_converter = PointCloudVisualizer(intrinsics_720p, 1280, 720)
 
 
 
-
+add_once
+once = 0
+box = None
 
 def runVideo(fps, depth_path, video_path):
     with open(depth_path, 'rb') as depth_file:
@@ -60,13 +62,33 @@ def runVideo(fps, depth_path, video_path):
             cv2.imshow('Depth (grayscale)', depth_grayscale)
             cv2.imshow('Color', color_frame)
 
-            color_frame_rgb = cv2.cvtColor(color_frame, cv2.COLOR_BGR2RGB)
+            color_frame_rgb = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)
+            color_frame_rgb = cv2.resize(color_frame_rgb, (1280, 720))
+            #print(color_frame_rgb)
 
             # Processing
             # Visualize depth
-            pcl_converter.rgbd_to_projection(depth_frame, depth_grayscale)
+            pcl_converter.rgbd_to_projection(depth_frame, color_frame_rgb)
+            
+            global add_once
+            if add_once == 0 :
+                box = open3d.geometry.TriangleMesh.create_box(1, 1, 0.01)
+                pcl_converter.vis.add_geometry(box)
+                add_once = 1
+            else :
+                center = box.get_center()
+                #center[0] += 1
+                box.translate([1,0,0])
+                pcl_converter.vis.update_geometry(box)
+                print('Translate, center: ', center)
+                
+
             pcl_converter.visualize_pcd()
             
+
+            
+
+
 
 
             cv2.waitKey( int((1.0 / fps) * 1000) )
