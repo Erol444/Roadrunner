@@ -64,8 +64,9 @@ def runVideo(fps, depth_path, video_path):
 
             # Processing
             # Visualize depth
-            pcl_converter.rgbd_to_projection(depth_frame, color_frame_rgb)
+            pcl_converter.rgbd_to_projection(depth_frame, depth_grayscale)
             pcl_converter.visualize_pcd()
+            
 
 
             cv2.waitKey( int((1.0 / fps) * 1000) )

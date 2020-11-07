@@ -8,6 +8,7 @@ class PointCloudVisualizer():
         self.depth_map = None
         self.rgb = None
         self.pcl = None
+        self.pcd = None
         # self.depth_scale = depth_scale
         # self.depth_trunc = depth_trunc
         # self.rgbd_mode = rgbd_mode
@@ -56,6 +57,7 @@ class PointCloudVisualizer():
             pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, self.pinhole_camera_intrinsic)
             self.pcl.points = pcd.points
             self.pcl.colors = pcd.colors
+            self.pcd = pcd
         return self.pcl
 
 
