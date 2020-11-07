@@ -19,22 +19,30 @@ import threading
 from urllib.parse import urlparse, parse_qs
 
 # GPS Coords
-gps_lat = 0
-gps_long = 0
+latest_gps_lat = 0.0
+latest_gps_long = 0.0
+metadata_list = []
 
 # GPS Server
 class ServerHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         print('GET REQUETS received')
-        global gps_lat
-        global gps_long
-        
-        url = urlparse(self.path)
-        if url.path == "/gps" :
-            print('gps param: ', url.query["gps"])
+        global latest_gps_lat
+        global latest_gps_long
 
-        #return http.server.BaseHTTPRequestHandler.do_GET(self)
+        url = urlparse(self.path)
+
+        coords = url.query.split('=')[1].split(';')
+        latest_gps_lat = coords[0]
+        latest_gps_long = coords[1]
+
+        print(latest_gps_lat, latest_gps_long)
+        # url.parse('')
+        # if url.path == "/gps" :
+        #     url.query["gps"]
+        return self.send_response(200)
+
 
     def do_POST(self):
         content_len = int(self.headers['Content-Length'])
@@ -349,6 +357,10 @@ class DepthAI:
                             # Save file
                             frame.tofile(depth_file)
 
+                            # Gps add to list
+                            metadata_list.append({ "gps_lat": latest_gps_lat, "gps_long": latest_gps_long, "timestamp" : time()})
+
+
                             frame = (65535 // frame).astype(np.uint8)
                             #colorize depth map, comment out code below to obtain grayscale
                             frame = cv2.applyColorMap(frame, cv2.COLORMAP_HOT)
@@ -446,8 +458,13 @@ class DepthAI:
         if color_file is not None:
             color_file.close()
 
-        if color_video_writer is not None:
-            color_video_writer.release()
+        #if color_video_writer is not None:
+        #    color_video_writer.release()
+
+        # Write gps list
+        # print('metadata LIST: ', metadata_list)
+        with open('captures/gps-' + timestr + '.json', 'w') as fp:
+            json.dump({"metadata": metadata_list}, fp)
 
         print('py: DONE.')
 
