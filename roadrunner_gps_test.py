@@ -13,11 +13,18 @@ class ServerHandler(http.server.BaseHTTPRequestHandler):
         print('GET REQUETS received')
         global gps_lat
         global gps_long
-        
-        url = urlparse(self.path)
-        if url.path == "/gps" :
-            url.query["gps"]
 
+        url = urlparse(self.path)
+
+        coords = url.query.split('=')[1].split(';')
+        gps_lat = coords[0]
+        gps_long = coords[1]
+
+        print(gps_lat, gps_long)
+        # url.parse('')
+        # if url.path == "/gps" :
+        #     url.query["gps"]
+        return self.send_response(200)
 
         #return http.server.BaseHTTPRequestHandler.do_GET(self)
 
@@ -31,7 +38,7 @@ class ServerHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Set-Cookie", "foo=bar")
         self.end_headers()
         #self.wfile.write('')
-        
+
 def main():
     port = 5000
     with socketserver.TCPServer(("", port), ServerHandler) as httpd:
@@ -43,5 +50,4 @@ th.daemon = True
 th.start()
 
 while True:
-    print('hai', test)
     time.sleep(1)
