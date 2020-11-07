@@ -33,14 +33,17 @@ pcl_converter = PointCloudVisualizer(intrinsics_720p, 1280, 720)
 
 
 
-add_once
-once = 0
+
+add_once = 0
 box = None
 
 def runVideo(fps, depth_path, video_path):
     with open(depth_path, 'rb') as depth_file:
         video = cv2.VideoCapture(video_path)
         while True:         
+
+            t1 = time.time()
+
             # Read (all data of current event) depth and color frames
             depth_bytes = depth_file.read(depth_size)
             ret, color_frame = video.read()
@@ -69,44 +72,40 @@ def runVideo(fps, depth_path, video_path):
             # Processing
             # Visualize depth
             pcl_converter.rgbd_to_projection(depth_frame, color_frame_rgb)
-            
-            global add_once
-            if add_once == 0 :
-                box = open3d.geometry.TriangleMesh.create_box(1, 1, 0.01)
-                pcl_converter.vis.add_geometry(box)
-                add_once = 1
-            else :
-                center = box.get_center()
-                #center[0] += 1
-                box.translate([1,0,0])
-                pcl_converter.vis.update_geometry(box)
-                print('Translate, center: ', center)
-                
-
-            pcl_converter.visualize_pcd()
 
             pointCloud = pcl_converter.pcd
             if pointCloud != None:
                 #print(pointCloud)
-                plane_model,inliers = pointCloud.segment_plane(10.0,10,10)
-            #pointCLD = open3d.visualization.draw_geometries([pointCLD])
+                plane_model,inliers = pointCloud.segment_plane(0.01,3,100)
+                #pointCLD = open3d.visualization.draw_geometries([pointCLD])
                 [a, b, c, d] = plane_model
                 #print(f"Plane model: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
-
 
                 inlier_cloud = pointCloud.select_by_index(inliers)
                 inlier_cloud.paint_uniform_color([1.0, 0, 0])
 
                 outlier_cloud = pointCloud.select_by_index(inliers, invert=True)
 
-                pcl_converter.vis.draw_geometries([inlier_cloud, outlier_cloud])
+                pcl_converter.pcl.points = inlier_cloud.points
 
-            
+                pcl_converter.visualize_pcd()
 
+            #global add_once
+            #if add_once == 0:
+                #box = open3d.geometry.TriangleMesh.create_box(1, 1, 0.01)
+                #pcl_converter.vis.add_geometry(box)
+                #add_once = 1
+            #else:
+                #center = box.get_center()
+                # center[0] += 1
+                #box.translate([1, 0, 0])
+                #pcl_converter.vis.update_geometry(box)
+                #print('Translate, center: ', center)
 
-
-
-            cv2.waitKey( int((1.0 / fps) * 1000) )
+            to_wait = int( ( (1.0 / fps) * 1000 - (time.time() - t1) * 1000) )
+            if to_wait <= 0:
+                to_wait = 1
+            cv2.waitKey( to_wait )
 
 
 
