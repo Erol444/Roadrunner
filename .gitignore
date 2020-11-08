@@ -56,4 +56,5 @@ intrinsic_calib_m2
 *.so
 *.prof
 
-uploads/
+**/temp/*.jpeg
+**/temp/*.png
