@@ -35,7 +35,6 @@ try:
         sensor_dataGPS['longitude'] = longitude
         sensor_dataGPS['Speed'] = speed
 
-
         # Sending humidity and temperature data to ThingsBoard
         print(json.dumps(sensor_dataGPS))
         client.publish('v1/devices/me/telemetry', json.dumps(sensor_dataGPS), 1)
