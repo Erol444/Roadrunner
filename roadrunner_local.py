@@ -150,7 +150,7 @@ def runVideo(fps, depth_path, video_path):
 
                 # Filter by Area.
                 params.filterByArea = True
-                params.minArea = 750
+                params.minArea = 500
 
                 # Filter by Circularity
                 params.filterByCircularity = False
