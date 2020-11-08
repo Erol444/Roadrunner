@@ -1,0 +1,66 @@
+{
+  "id": {
+    "entityType": "DASHBOARD",
+    "id": "f5ac89f0-2139-11eb-ae92-1b95bbb7bc6f"
+  },
+  "createdTime": 1604781838351,
+  "tenantId": {
+    "entityType": "TENANT",
+    "id": "d227f640-211b-11eb-849c-f12784a679f5"
+  },
+  "title": "GPS-ERIK",
+  "assignedCustomers": null,
+  "configuration": {
+    "description": "",
+    "widgets": {},
+    "states": {
+      "default": {
+        "name": "GPS-ERIK",
+        "root": true,
+        "layouts": {
+          "main": {
+            "widgets": {},
+            "gridSettings": {
+              "backgroundColor": "#eeeeee",
+              "color": "rgba(0,0,0,0.870588)",
+              "columns": 24,
+              "margin": 10,
+              "backgroundSizeMode": "100%"
+            }
+          }
+        }
+      }
+    },
+    "entityAliases": {
+      "dd60776e-9532-7438-8311-77197aa92a87": {
+        "id": "dd60776e-9532-7438-8311-77197aa92a87",
+        "alias": "GpsInputs",
+        "filter": {
+          "type": "entityList",
+          "resolveMultiple": true,
+          "entityType": "DEVICE",
+          "entityList": ["cd2c4f90-2122-11eb-ae92-1b95bbb7bc6f"]
+        }
+      }
+    },
+    "filters": {},
+    "timewindow": {
+      "hideInterval": false,
+      "hideAggregation": false,
+      "hideAggInterval": false,
+      "selectedTab": 0,
+      "realtime": { "timewindowMs": 7200000, "interval": 15000 },
+      "aggregation": { "type": "AVG", "limit": 25000 }
+    },
+    "settings": {
+      "stateControllerId": "entity",
+      "showTitle": false,
+      "showDashboardsSelect": true,
+      "showEntitiesSelect": true,
+      "showDashboardTimewindow": true,
+      "showDashboardExport": true,
+      "toolbarAlwaysOpen": true
+    }
+  },
+  "name": "GPS-ERIK"
+}
