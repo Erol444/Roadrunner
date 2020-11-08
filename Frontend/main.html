@@ -22,20 +22,26 @@
         }
         var mymap = L.map('mapid').setView([51.505, -0.09], 13);
         function load() {
-            getScore()
-            getEvents()
+            getScore();
+            getEvents();
         }
         function sendGetReq(url) {
             var xmlHttp = new XMLHttpRequest();
-            xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+            xmlHttp.open( "GET", url, false ); // false for synchronous request
             xmlHttp.send( null );
             return xmlHttp.responseText
         }
         function getEvents() {
-            let events = JSON.parse(sendGetReq('http://localhost:8080/getscore'));
+            let events = JSON.parse(sendGetReq('http://83.212.126.9:8080/getevents'));
+            for (var i = 0; i < events.length; i++) {
+                var imgLocation = `http://83.212.126.9:8080/image?id=${events[i].img}`;
+                L.marker([events[i].lat, events[i].long], {title:'Pothole', opacity:1.0, riseOnHover:true})
+                    .bindPopup(`<a href="${imgLocation}"><img src="${imgLocation}" height="150px" width="150px" alt="HTML5 Doctor Logo"/></a>`)
+                    .addTo(mymap);
+            }
         }
         function getScore() {
-            let scores = JSON.parse(sendGetReq('http://localhost:8080/getscore'));
+            let scores = JSON.parse(sendGetReq('http://83.212.126.9:8080/getscore'));
             var coords = []
             var color = ''
             for (var i = 0; i < scores.length; i++) {
@@ -43,14 +49,14 @@
                 newColor = getColor(scores[i].score);
                 if (color != newColor) {
                     // Display all cached coordinates
-                    var polyline = L.polyline(coords, {color: color, opacity: 0.5}).addTo(mymap);
+                    var polyline = L.polyline(coords, {color: color, opacity: 0.5, weight: 6}).addTo(mymap);
                     mymap.fitBounds(polyline.getBounds());
                     coords = coords.slice(coords.length - 1, coords.length)
                     color = newColor;
                 }
             }
-            var polyline = L.polyline(coords, {color: color, opacity: 0.5}).addTo(mymap);
-            mymap.fitBounds(polyline.getBounds());
+            var polyline = L.polyline(coords, {color: color, opacity: 0.5, weight: 6}).addTo(mymap);
+            // mymap.fitBounds(polyline.getBounds());
         }
 
         L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
@@ -62,13 +68,6 @@
             accessToken: 'pk.eyJ1IjoiZXJvbDQiLCJhIjoiY2toOGk3czJ0MGRxMzJ4bWlwdXc0MG56cCJ9.DRXJDLH4Axgm_h0AhX1NCQ'
         }).addTo(mymap);
 
-        // popup
-        // .setLatLng(e.latlng)
-        // .setContent("<center>My Photo </center>" + "</br>"+ photoImg)
-        // .openOn(mymap);
-        var popup = L.popup()
-            .setLatLng([51.5, -0.09])
-            .setContent("I am a standalone popup.")
-            .openOn(mymap);
+        document.getElementById("mapid").style.height = window.innerHeight + "px";
     </script>
 </html>
