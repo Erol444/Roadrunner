@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import time
 import open3d
+import math
 
 depth_size = 1280*720*2 # 720p uint16
 color_size = 1920*1080*3 # 10808p BGR
@@ -21,7 +22,6 @@ intrinsics_800p = [
     [0.0, 0.0, 1.0]
 ]
 
-
 try:
     from depthai_helpers.projector_3d import PointCloudVisualizer
 except ImportError as e:
@@ -29,10 +29,12 @@ except ImportError as e:
 
 pcl_converter = PointCloudVisualizer(intrinsics_720p, 1280, 720)
 
+
+def point_to_plane_dist(x1, y1, z1, a, b, c, d, e):
+    d = abs((a * x1 + b * y1 + c * z1 + d))
+    print(d.shape)
+    return d/e
 #right_rectified = cv2.flip(right_rectified, 1)
-
-
-
 
 add_once = 0
 box = None
@@ -40,7 +42,7 @@ box = None
 def runVideo(fps, depth_path, video_path):
     with open(depth_path, 'rb') as depth_file:
         video = cv2.VideoCapture(video_path)
-        while True:         
+        while True:
 
             t1 = time.time()
 
@@ -49,13 +51,13 @@ def runVideo(fps, depth_path, video_path):
             ret, color_frame = video.read()
 
             # End of streams
-            if len(depth_bytes) < depth_size or ret == False : 
+            if len(depth_bytes) < depth_size or ret == False :
                 print('End of stream...')
                 break
 
             # Convert to appropriate np array
             depth_frame = np.frombuffer(depth_bytes, dtype=np.uint16).reshape( (720, 1280) )
-            #color_frame = np.frombuffer(color_bytes, dtype=np.uint8).reshape( (1080, 1920, 3) )    
+            #color_frame = np.frombuffer(color_bytes, dtype=np.uint8).reshape( (1080, 1920, 3) )
 
             # Preprocess depth to grayscale
             depth_grayscale = (65535 // depth_frame).astype(np.uint8)
@@ -75,32 +77,30 @@ def runVideo(fps, depth_path, video_path):
 
             pointCloud = pcl_converter.pcd
             if pointCloud != None:
-                #print(pointCloud)
-                plane_model,inliers = pointCloud.segment_plane(0.01,3,100)
-                #pointCLD = open3d.visualization.draw_geometries([pointCLD])
+                # print(pointCloud)
+
+                plane_model,inliers = pointCloud.segment_plane(distance_threshold=0.1,ransac_n=3,num_iterations=100)
+                # pointCLD = open3d.visualization.draw_geometries([pointCLD])
                 [a, b, c, d] = plane_model
                 #print(f"Plane model: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
 
                 inlier_cloud = pointCloud.select_by_index(inliers)
                 inlier_cloud.paint_uniform_color([1.0, 0, 0])
 
+                pointCloud.paint_uniform_color([0.5, 0.5, 0.5])
+                pcd_tree = open3d.geometry.KDTreeFlann(pointCloud)
+
+                # pointsArr = np.asarray(inlier_cloud.points)
+                # print(pointsArr.shape)
+                # e = (np.sqrt(a * a + b * b + c * c))
+                # deviation = point_to_plane_dist(pointsArr[:,0], pointsArr[:,1], pointsArr[:,2], a, b, c, d, e)
+                # print(np.sum(deviation))
+
                 outlier_cloud = pointCloud.select_by_index(inliers, invert=True)
 
                 pcl_converter.pcl.points = inlier_cloud.points
 
                 pcl_converter.visualize_pcd()
-
-            #global add_once
-            #if add_once == 0:
-                #box = open3d.geometry.TriangleMesh.create_box(1, 1, 0.01)
-                #pcl_converter.vis.add_geometry(box)
-                #add_once = 1
-            #else:
-                #center = box.get_center()
-                # center[0] += 1
-                #box.translate([1, 0, 0])
-                #pcl_converter.vis.update_geometry(box)
-                #print('Translate, center: ', center)
 
             to_wait = int( ( (1.0 / fps) * 1000 - (time.time() - t1) * 1000) )
             if to_wait <= 0:
@@ -117,17 +117,9 @@ cv2.waitKey(0)
 
 
 
-
-
-
-
-
-
-
-
 def runColor(fps, depth_path, color_path):
     with open(depth_path, 'rb') as depth_file, open(color_path, 'rb') as color_file:
-        while True:     
+        while True:
             # Read (all data of current event) depth and color frames
             depth_bytes = depth_file.read(depth_size)
             color_bytes = color_file.read(color_size)
@@ -140,7 +132,7 @@ def runColor(fps, depth_path, color_path):
 
             # Convert to appropriate np array
             depth_frame = np.frombuffer(depth_bytes, dtype=np.uint16).reshape( (720, 1280) )
-            color_frame = np.frombuffer(color_bytes, dtype=np.uint8).reshape( (1080, 1920, 3) )    
+            color_frame = np.frombuffer(color_bytes, dtype=np.uint8).reshape( (1080, 1920, 3) )
 
             # Preprocess depth to grayscale
             depth_grayscale = (65535 // depth_frame).astype(np.uint8)
