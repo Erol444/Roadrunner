@@ -15,7 +15,7 @@ def _get_immediate_subdirectories(a_dir):
             if os.path.isdir(os.path.join(a_dir, name))]
 
 _stream_choices = ("metaout", "previewout", "jpegout", "left", "right", "depth", "disparity", "disparity_color",
-                   "meta_d2h", "object_tracker", "rectified_left", "rectified_right", "color")
+                   "meta_d2h", "object_tracker", "rectified_left", "rectified_right", "color", "video")
 _CNN_choices = _get_immediate_subdirectories(consts.resource_paths.nn_resource_path)
 _CNN2_choices = ['landmarks-regression-retail-0009', 'facial-landmarks-35-adas-0002', 'emotions-recognition-retail-0003']
 

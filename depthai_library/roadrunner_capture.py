@@ -134,18 +134,23 @@ class DepthAI:
         # timestamp
         timestr = strftime("%Y%m%d-%H%M%S")
 
+        # Create captures folder
+        import pathlib
+        script_path = os.path.realpath(__file__) 
+        print("Script path: ", script_path)
+        cap_prefix = script_path + "/../captures/"
+        pathlib.Path(cap_prefix).mkdir(parents=True, exist_ok=True)
+
         # open video file
-        video_file = open('captures/video-' + timestr, 'wb')
+        video_file = open(cap_prefix + '/video-' + timestr, 'wb')
 
         # Open depth file
-        depth_file = open('captures/depth-' + timestr, 'wb')
+        depth_file = open(cap_prefix + '/depth-' + timestr, 'wb')
 
         # Open color file
-        color_file = open('captures/color-' + timestr, 'wb')
-
-        # Open color vid
-        # color_video_writer = cv2.VideoWriter('captures/color-' + timestr + '.pngstream', cv2.VideoWriter_fourcc('M','J','P','G'), 5, (1920, 1080))
-
+        color_file = None
+        if 'color' in stream_names: 
+            color_file = open(cap_prefix + '/color-' + timestr, 'wb')
 
         self.device = None
         if debug_mode: 
@@ -293,48 +298,11 @@ class DepthAI:
                 window_name = packet.stream_name
                 if packet.stream_name not in stream_names:
                     continue # skip streams that were automatically added
-                if args['verbose']: print_packet_info(packet, packet.stream_name)
+                
                 packetData = packet.getData()
                 if packetData is None:
                     print('Invalid packet data!')
                     continue
-                elif packet.stream_name == 'previewout':
-                    meta = packet.getMetadata()
-                    camera = 'rgb'
-                    if meta != None:
-                        camera = meta.getCameraName()
-
-                    window_name = 'previewout-' + camera
-                    # the format of previewout image is CHW (Chanel, Height, Width), but OpenCV needs HWC, so we
-                    # change shape (3, 300, 300) -> (300, 300, 3)
-                    data0 = packetData[0,:,:]
-                    data1 = packetData[1,:,:]
-                    data2 = packetData[2,:,:]
-                    frame = cv2.merge([data0, data1, data2])
-                    if nnet_prev["entries_prev"][camera] is not None:
-                        frame = show_nn(nnet_prev["entries_prev"][camera], frame, NN_json=NN_json, config=config)
-                        if enable_object_tracker and tracklets is not None:
-                            frame = show_tracklets(tracklets, frame, labels)
-                    cv2.putText(frame, "fps: " + str(frame_count_prev[window_name]), (25, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
-                    cv2.putText(frame, "NN fps: " + str(frame_count_prev['nn'][camera]), (2, frame.shape[0]-4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0))
-                    cv2.imshow(window_name, frame)
-                elif packet.stream_name in ['left', 'right', 'disparity', 'rectified_left', 'rectified_right']:
-                    frame_bgr = packetData
-                    if args['pointcloud'] and packet.stream_name == 'rectified_right':
-                        right_rectified = packetData
-                    cv2.putText(frame_bgr, packet.stream_name, (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
-                    cv2.putText(frame_bgr, "fps: " + str(frame_count_prev[window_name]), (25, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
-                    camera = None
-                    if args['draw_bb_depth']:
-                        camera = args['cnn_camera']
-                        if packet.stream_name == 'disparity':
-                            if camera == 'left_right':
-                                camera = 'right'
-                        elif camera != 'rgb':
-                            camera = packet.getMetadata().getCameraName()
-                        if nnet_prev["entries_prev"][camera] is not None: 
-                            frame_bgr = show_nn(nnet_prev["entries_prev"][camera], frame_bgr, NN_json=NN_json, config=config, nn2depth=nn2depth)
-                    cv2.imshow(window_name, frame_bgr)
                 elif packet.stream_name.startswith('depth') or packet.stream_name == 'disparity_color':
                     frame = packetData
 
@@ -343,23 +311,12 @@ class DepthAI:
                             cv2.putText(frame, packet.stream_name, (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255))
                             cv2.putText(frame, "fps: " + str(frame_count_prev[window_name]), (25, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255))
                         else: # uint16
-                            if args['pointcloud'] and "depth" in stream_names and "rectified_right" in stream_names and right_rectified is not None:
-                                try:
-                                    from depthai_helpers.projector_3d import PointCloudVisualizer
-                                except ImportError as e:
-                                    raise ImportError(f"\033[1;5;31mError occured when importing PCL projector: {e} \033[0m ")
-                                if pcl_converter is None:
-                                    pcl_converter = PointCloudVisualizer(self.device.get_right_intrinsic(), 1280, 720)
-                                right_rectified = cv2.flip(right_rectified, 1)
-                                pcl_converter.rgbd_to_projection(frame, right_rectified)
-                                pcl_converter.visualize_pcd()
-                            
-                            # Save file
+                               
+                             # Save file
                             frame.tofile(depth_file)
 
                             # Gps add to list
                             metadata_list.append({ "gps_lat": latest_gps_lat, "gps_long": latest_gps_long, "timestamp" : time()})
-
 
                             frame = (65535 // frame).astype(np.uint8)
                             #colorize depth map, comment out code below to obtain grayscale
@@ -378,12 +335,7 @@ class DepthAI:
                         if nnet_prev["entries_prev"][camera] is not None:
                             frame = show_nn(nnet_prev["entries_prev"][camera], frame, NN_json=NN_json, config=config, nn2depth=nn2depth)
                     cv2.imshow(window_name, frame)
-
-                elif packet.stream_name == 'jpegout':
-                    jpg = packetData
-                    mat = cv2.imdecode(jpg, cv2.IMREAD_COLOR)
-                    cv2.imshow('jpegout', mat)
-
+                
                 elif packet.stream_name == 'video':
                     videoFrame = packetData
                     videoFrame.tofile(video_file)
@@ -402,30 +354,16 @@ class DepthAI:
                     cv2.putText(bgr, packet.stream_name, (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
                     cv2.putText(bgr, "fps: " + str(frame_count_prev[window_name]), (25, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0))
 
-                    #bgr.tofile(color_file)
+                    bgr.tofile(color_file)
                     #color_video_writer.write(bgr)
-
-                    #cv2.imshow("color", bgr)
-
-                elif packet.stream_name == 'meta_d2h':
-                    str_ = packet.getDataAsStr()
-                    dict_ = json.loads(str_)
-
-                    print('meta_d2h Temp',
-                        ' CSS:' + '{:6.2f}'.format(dict_['sensors']['temperature']['css']),
-                        ' MSS:' + '{:6.2f}'.format(dict_['sensors']['temperature']['mss']),
-                        ' UPA:' + '{:6.2f}'.format(dict_['sensors']['temperature']['upa0']),
-                        ' DSS:' + '{:6.2f}'.format(dict_['sensors']['temperature']['upa1']))
-                elif packet.stream_name == 'object_tracker':
-                    tracklets = packet.getObjectTracker()
+                    cv2.imshow("color", bgr)
 
                 frame_count[window_name] += 1
 
             t_curr = time()
             if t_start + 1.0 < t_curr:
                 t_start = t_curr
-                # print("metaout fps: " + str(frame_count_prev["metaout"]))
-
+                
                 stream_windows = []
                 for s in stream_names:
                     if s == 'previewout':
@@ -457,9 +395,6 @@ class DepthAI:
 
         if color_file is not None:
             color_file.close()
-
-        #if color_video_writer is not None:
-        #    color_video_writer.release()
 
         # Write gps list
         # print('metadata LIST: ', metadata_list)
