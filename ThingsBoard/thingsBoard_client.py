@@ -1,10 +1,10 @@
+import json
 import time
 import paho.mqtt.client as mqtt
 import json
 
 THINGSBOARD_HOST = '83.212.126.9'
 ACCESS_TOKEN = 'YRAD7MrmP0JjuFC8VqGl'
-
 # Data capture and upload interval in seconds. Less interval will eventually hang the DHT22.
 INTERVAL=2
 
@@ -41,8 +41,8 @@ try:
         client.publish('v1/devices/me/telemetry', json.dumps(sensor_dataGPS), 1)
         client.publish('v1/devices/me/telemetry', json.dumps(sensor_data), 1)
 
-        latitude = latitude + 0.0001
-        longitude = longitude + 0.0001
+        latitude += 0.0001
+        longitude += 0.0001
         speed = speed + 5
         time.sleep(5)
 except KeyboardInterrupt:
