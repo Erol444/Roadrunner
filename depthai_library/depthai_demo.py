@@ -314,10 +314,10 @@ class DepthAI:
 
                 elif packet.stream_name == 'video':
                     videoFrame = packetData
-                    videoFrame.tofile(video_file)
-                    #mjpeg = packetData
-                    #mat = cv2.imdecode(mjpeg, cv2.IMREAD_COLOR)
-                    #cv2.imshow('mjpeg', mat)
+                    #videoFrame.tofile(video_file)
+                    mjpeg = packetData
+                    mat = cv2.imdecode(mjpeg, cv2.IMREAD_COLOR)
+                    cv2.imshow('mjpeg', mat)
                 elif packet.stream_name == 'color':
                     meta = packet.getMetadata()
                     w = meta.getFrameWidth()
