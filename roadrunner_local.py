@@ -37,6 +37,13 @@ def Project(points, intrinsic, distortion):
         result, _ = cv2.projectPoints(points, rvec, tvec, intrinsic, distortion)
     return np.squeeze(result, axis=1)
 
+def downscale(img, scale, interpolation):
+    # no scale, use scale values of up to 100
+    if 100 < scale: return img
+    height = int(img.shape[0] * scale / 100)
+    width = int(img.shape[1] * scale / 100)
+    # resize image
+    return cv2.resize(img, (width, height), interpolation=interpolation)
 
 
 try:
@@ -84,16 +91,12 @@ def runVideo(fps, depth_path, video_path):
             cv2.imshow('Depth (grayscale)', depth_grayscale)
             cv2.imshow('Color', color_frame)
 
-            color_frame_rgb = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)
-            color_frame_rgb = cv2.resize(color_frame_rgb, (1280, 720))
-            #print(color_frame_rgb)
-
-            black_image = np.zeros(shape=[height, width, 1], dtype=np.uint8)
-
-
             # Processing
             # Visualize depth
-            pcl_converter.rgbd_to_projection(depth_frame, color_frame_rgb)
+            DOWNSIZE_SCALE = 50
+            downscaled = downscale(depth_frame, DOWNSIZE_SCALE, cv2.INTER_AREA)
+            print(downscaled.shape)
+            pcl_converter.depth_to_projection(downscaled)
 
             pointCloud = pcl_converter.pcd
             if pointCloud != None:
@@ -109,7 +112,6 @@ def runVideo(fps, depth_path, video_path):
                 #outlier_cloud = pointCloud.select_by_index(inliers, invert=True)
 
                 pcl_converter.pcl.points = inlier_cloud.points
-
                 pcl_converter.visualize_pcd()
 
                 distortion = np.array([0.0, 0.0, 0.0, 0.0])  # This works!
@@ -121,20 +123,23 @@ def runVideo(fps, depth_path, video_path):
 
                 # Create 1280x720 image holder for blobs
                 # black blank image
-                black_image = np.zeros(shape=[height, width, 1], dtype=np.uint8)
+
+                height_scaled = int(height * DOWNSIZE_SCALE / 100)
+                width_scaled = int(width * DOWNSIZE_SCALE / 100)
+                black_image = np.zeros(shape=[height_scaled, width_scaled, 1], dtype=np.uint8)
 
                 # Draw white exclusion zones
-                zoned_placeholder = cv2.rectangle(black_image, (0,0), ( (width - road_width) // 2, height), (255), -1)
-                zoned_placeholder = cv2.rectangle(black_image, (width-((width - road_width) // 2),0), (width, height), (255), -1)
+                zoned_placeholder = cv2.rectangle(black_image, (0,0), ( (width_scaled - road_width) // 2, height_scaled), (255), -1)
+                zoned_placeholder = cv2.rectangle(black_image, (width_scaled-((width_scaled - road_width) // 2),0), (width_scaled, height_scaled), (255), -1)
 
                 # Set points
                 for pt in points :
-                    zoned_placeholder[int(pt[1]),int(pt[0])] = 255 
+                    zoned_placeholder[int(pt[1]),int(pt[0])] = 255
 
                 # dilate and erode
-                kernel = np.ones((5,5), np.uint8) 
-                zoned_placeholder = cv2.dilate(zoned_placeholder, kernel, iterations=1) 
-                zoned_placeholder = cv2.erode(zoned_placeholder, kernel, iterations=1) 
+                kernel = np.ones((5,5), np.uint8)
+                zoned_placeholder = cv2.dilate(zoned_placeholder, kernel, iterations=1)
+                zoned_placeholder = cv2.erode(zoned_placeholder, kernel, iterations=1)
 
                 # print(blank_image.shape)
                 #cv2.imshow("Zoned image", zoned_placeholder)
@@ -161,7 +166,7 @@ def runVideo(fps, depth_path, video_path):
                 # Filter by Inertia
                 params.filterByInertia = False
 
-                # Create detector with params 
+                # Create detector with params
                 detector = cv2.SimpleBlobDetector_create(params)
 
                 # Detect blobs.
@@ -177,7 +182,7 @@ def runVideo(fps, depth_path, video_path):
 
 
                 # Calculate final score (sum all keypoint areas)
-                max_area = height * road_width
+                max_area = height_scaled * road_width
                 final_area = 0
                 for keypoint in keypoints :
                     approx_area = ((keypoint.size / 2) ** 2) * np.pi

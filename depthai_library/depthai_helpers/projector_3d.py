@@ -45,6 +45,19 @@ class PointCloudVisualizer():
     #     pcd.points = o3d.utility.Vector3dVector(xyz)
     #     return pcd
 
+    def depth_to_projection(self, depth_map):
+        self.depth_map = depth_map
+        depth_o3d = o3d.geometry.Image(self.depth_map)
+
+        if self.pcl is None:
+            self.pcl = o3d.geometry.PointCloud.create_from_depth_image(depth_o3d, self.pinhole_camera_intrinsic)
+        else:
+            pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_o3d, self.pinhole_camera_intrinsic)
+            self.pcl.points = pcd.points
+            self.pcl.colors = pcd.colors
+            self.pcd = pcd
+        return self.pcl
+
     def rgbd_to_projection(self, depth_map, rgb):
         self.depth_map = depth_map
         self.rgb = rgb
@@ -138,5 +151,5 @@ def visualize(pcd):
 #             y = (v - c_y) * z / f_y
 #             point_cloud.append((x,y,z))
 #     return point_cloud
-            
+
 
